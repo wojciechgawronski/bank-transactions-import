@@ -1,0 +1,12 @@
+services:
+  app:
+    build:
+      context: ./backend
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    ports:
+      - "8000:8000"
+    env_file: ./backend/.env
+    volumes:
+      - ./backend:/var/www/html

@@ -139,6 +139,10 @@ cp backend/.env.example backend/.env
 docker compose up -d --build
 docker compose exec app php artisan key:generate
 docker compose exec app php artisan migrate
+
+
+docker compose up -d;
+curl http://localhost:8000/api/v1/test;
 ```
 
 | Usługa     | Rola                                   | Adres                   |
