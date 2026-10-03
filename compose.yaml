@@ -10,3 +10,16 @@ services:
     env_file: ./backend/.env
     volumes:
       - ./backend:/var/www/html
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "5173:5173"
+    environment:
+      API_PROXY_TARGET: http://app:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - app
