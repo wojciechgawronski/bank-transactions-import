@@ -19,10 +19,15 @@ Development i produkcja działają w Dockerze.
 - **Bez kont i logowania.** To narzędzie wewnętrzne, dostęp chroni sieć lub reverse proxy, nie aplikacja.
 - **Kwoty w groszach.** `amount` to liczba całkowita w jednostkach podrzędnych waluty (`150000` = 1 500,00 PLN).
   W bazie siedzi `unsignedBigInteger`, nigdy `float`. Formatowanie do postaci „1 500,00” odbywa się dopiero we froncie.
-- **Waluta z listy ISO 4217.** Sprawdza ją `symfony/intl` (`Currencies::exists()`).
+- **Waluta z listy ISO 4217.** Brief wymaga „trzech liter”; dodatkowo sprawdzamy, czy taki kod istnieje
+  (`symfony/intl`, `Currencies::exists()`), więc PLN i USD przechodzą, a wymyślone `ABC` już nie.
+- **IBAN z sumą kontrolną mod-97.** Brief wymaga „IBAN”, więc sprawdzamy format i cyfry kontrolne, tak jak bank.
+  Przykładowe numery z briefu (`PL1234…`, `PL9876…`) to placeholdery bez poprawnej sumy kontrolnej, dlatego
+  trafiają do `import_logs` z błędem IBAN. Pliki w `backend/tests/fixtures/valid.*` mają prawdziwe, poprawne numery.
 - **Import częściowy.** Poprawne rekordy trafiają do `transactions`, błędne do `import_logs`.
   Status importu to `success`, `partial` albo `failed`.
 - **Asynchronicznie.** Upload odpowiada od razu (`202`), a plik przetwarza worker kolejki.
+  Dlatego poza statusami z briefu import ma też `pending` i `processing`, zanim zostanie przetworzony.
 
 ## Stos
 
@@ -42,7 +47,7 @@ Development i produkcja działają w Dockerze.
 ## Architektura backendu
 
 ```
-POST /api/v1/imports
+POST /api/imports
   └─ ImportController ── zapis pliku + rekord imports (pending) ── 202
        └─ dispatch ProcessImport (kolejka)
             └─ ImportProcessor
@@ -100,10 +105,10 @@ Błąd rekordu nie przerywa importu, tylko trafia do `import_logs`.
 
 | Metoda | Ścieżka                            | Opis                                  |
 | ------ | ---------------------------------- | ------------------------------------- |
-| POST   | `/api/v1/imports`                  | upload pliku (`multipart`, pole `file`) → `202` |
-| GET    | `/api/v1/imports`                  | lista importów, paginowana            |
-| GET    | `/api/v1/imports/{import}`         | jeden import (polling statusu)        |
-| GET    | `/api/v1/imports/{import}/logs`    | błędy importu, paginowane             |
+| POST   | `/api/imports`                     | upload pliku (`multipart`, pole `file`) → `202` |
+| GET    | `/api/imports`                     | lista importów, paginowana            |
+| GET    | `/api/imports/{import}`            | szczegóły importu + logi błędów (jak w briefie); służy też do pollingu statusu |
+| GET    | `/api/imports/{import}/logs`       | logi błędów z paginacją (poza briefem, dla dużych importów) |
 
 ## Struktura repozytorium
 
@@ -140,7 +145,7 @@ docker compose up -d --build
 docker compose exec app php artisan key:generate
 docker compose exec app php artisan migrate
 docker compose up -d;
-curl http://localhost:8000/api/v1/test;
+curl http://localhost:8000/api/test;
 ```
 
 ### docker - postawienie srodowiska od nowa:
