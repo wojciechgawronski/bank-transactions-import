@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Domain\Import\Contracts\RecordValidator;
 use App\Domain\Import\Contracts\TransactionParser;
+use App\Domain\Import\LaravelRecordValidator;
 use App\Domain\Import\ParserRegistry;
 use App\Domain\Import\Parsers\CsvParser;
 use App\Domain\Import\Parsers\JsonParser;
@@ -22,6 +24,8 @@ class ImportServiceProvider extends ServiceProvider
             JsonParser::class,
             XmlParser::class,
         ], TransactionParser::class);
+
+        $this->app->bind(RecordValidator::class, LaravelRecordValidator::class);
 
         $this->app->singleton(ParserRegistry::class);
         $this->app->when(ParserRegistry::class)
