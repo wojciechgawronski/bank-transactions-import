@@ -145,7 +145,7 @@ docker compose up -d --build
 docker compose exec app php artisan key:generate
 docker compose exec app php artisan migrate
 docker compose up -d;
-curl http://localhost:8000/api/test;
+curl -F "file=@backend/tests/fixtures/valid.csv" http://localhost:8000/api/imports
 ```
 
 ### docker - postawienie srodowiska od nowa:
@@ -158,7 +158,7 @@ docker compose exec app php artisan migrate
 
 - down -v: usuwa kontenery, sieć i wolumeny, czyli bazę i node_modules frontu.
 - --rmi local: usuwa obrazy zbudowane z Twoich Dockerfile (app, frontend).
-- --remove-orphans: usuwa kontenery usług, których nie ma już w compose.yaml (np. dawny queue).
+- --remove-orphans: usuwa kontenery usług, których nie ma już w compose.yaml (np. usuniętych z pliku).
 - build --no-cache: buduje od zera, bez warstw z cache.
 - up -d --force-recreate -V: tworzy kontenery od nowa i odtwarza anonimowe wolumeny.
 
@@ -169,13 +169,12 @@ docker compose up -d --build --force-recreate -V
 | Usługa     | Rola                                   | Adres                   |
 | ---------- | -------------------------------------- | ----------------------- |
 | `app`      | Laravel API                            | http://localhost:8000   |
-| `queue`¹   | `php artisan queue:work`               | –                       |
-| `db`       | PostgreSQL                             | localhost:5433²         |
+| `queue`    | `php artisan queue:work`               | –                       |
+| `db`       | PostgreSQL                             | localhost:5433¹         |
 | `adminer`  | podgląd bazy (system: PostgreSQL, serwer: `db`) | http://localhost:8080 |
 | `frontend` | Vite dev server, proxy `/api` → `app`  | http://localhost:5173   |
 
-¹ Dochodzi razem z pierwszym jobem.
-² Port na hoście ustawia `DB_FORWARD_PORT` (domyślnie 5433, żeby nie kolidować z lokalnym PostgreSQL). Kontenery łączą się przez `db:5432`.
+¹ Port na hoście ustawia `DB_FORWARD_PORT` (domyślnie 5433, żeby nie kolidować z lokalnym PostgreSQL). Kontenery łączą się przez `db:5432`.
 
 `app` i `queue` współdzielą `storage/app/private` (oba montują `./backend`), żeby worker widział wgrany plik.
 
@@ -184,7 +183,7 @@ Codzienne komendy:
 ```sh
 docker compose exec app php artisan test           # testy backendu
 docker compose exec app vendor/bin/pint            # styl
-docker compose exec app vendor/bin/phpstan analyse # Larastan
+docker compose exec app vendor/bin/phpstan analyse --memory-limit=1G # Larastan
 docker compose logs -f queue                       # podgląd workera
 docker compose exec frontend npm run lint
 docker compose exec frontend npm run type-check
