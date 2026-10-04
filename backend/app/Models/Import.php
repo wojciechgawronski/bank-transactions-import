@@ -62,4 +62,12 @@ class Import extends Model
     {
         return $this->hasMany(Transaction::class);
     }
+
+    /**
+     * @return HasMany<ImportLog, $this>
+     */
+    public function logs(): HasMany
+    {
+        return $this->hasMany(ImportLog::class);
+    }
 }
