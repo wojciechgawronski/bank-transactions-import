@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<transactions>
+  <transaction>
+    <transaction_id>660e8400-e29b-41d4-a716-446655440000</transaction_id>
+    <account_number>PL61109010140000071219812874</account_number>
+    <transaction_date>2025-10-14</transaction_date>
+    <amount>150000</amount>
+    <currency>PLN</currency>
+  </transaction>
+  <transaction>
+    <transaction_id>660e8400-e29b-41d4-a716-446655440001</transaction_id>
+    <account_number>12345678901234567890123456</account_number>
+    <transaction_date>2025-10-13</transaction_date>
+    <amount>20050</amount>
+    <currency>USD</currency>
+  </transaction>
+  <transaction>
+    <transaction_id>660e8400-e29b-41d4-a716-446655440002</transaction_id>
+    <account_number>DE89370400440532013000</account_number>
+    <transaction_date>2025-10-12</transaction_date>
+    <amount>0</amount>
+    <currency>EUR</currency>
+  </transaction>
+  <transaction>
+    <transaction_id>660e8400-e29b-41d4-a716-446655440003</transaction_id>
+    <transaction_date>2025-10-11</transaction_date>
+    <amount>5000</amount>
+    <currency>PLN</currency>
+  </transaction>
+  <transaction>
+    <transaction_id>660e8400-e29b-41d4-a716-446655440004</transaction_id>
+    <account_number>GB82WEST12345698765432</account_number>
+    <transaction_date>2025-10-10</transaction_date>
+    <amount>7500</amount>
+    <currency>EURO</currency>
+  </transaction>
+  <transaction>
+    <transaction_id>660e8400-e29b-41d4-a716-446655440005</transaction_id>
+    <account_number>GB82WEST12345698765432</account_number>
+    <transaction_date>2025-10-09</transaction_date>
+    <amount>1200</amount>
+    <currency>GBP</currency>
+  </transaction>
+</transactions>

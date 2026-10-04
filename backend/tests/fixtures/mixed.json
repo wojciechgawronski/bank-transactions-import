@@ -1,0 +1,8 @@
+[
+  {"transaction_id": "660e8400-e29b-41d4-a716-446655440000", "account_number": "PL61109010140000071219812874", "transaction_date": "2025-10-14", "amount": 150000, "currency": "PLN"},
+  {"transaction_id": "660e8400-e29b-41d4-a716-446655440001", "account_number": "12345678901234567890123456", "transaction_date": "2025-10-13", "amount": 20050, "currency": "USD"},
+  {"transaction_id": "660e8400-e29b-41d4-a716-446655440002", "account_number": "DE89370400440532013000", "transaction_date": "2025-10-12", "amount": 0, "currency": "EUR"},
+  {"transaction_id": "660e8400-e29b-41d4-a716-446655440003", "transaction_date": "2025-10-11", "amount": 5000, "currency": "PLN"},
+  {"transaction_id": "660e8400-e29b-41d4-a716-446655440004", "account_number": "GB82WEST12345698765432", "transaction_date": "2025-10-10", "amount": 7500, "currency": "EURO"},
+  {"transaction_id": "660e8400-e29b-41d4-a716-446655440005", "account_number": "GB82WEST12345698765432", "transaction_date": "2025-10-09", "amount": 1200, "currency": "GBP"}
+]
