@@ -37,9 +37,7 @@ final class ImportProcessor
         try {
             $result = $this->importRecords($import, $this->parsers->for($format)->parse($path));
         } catch (InvalidImportFile $e) {
-            // An unreadable file is all-or-nothing: drop chunks saved before the error.
-            $this->reset($import, ImportStatus::Failed);
-            $import->logs()->create(['error_message' => $e->getMessage()]);
+            $this->fail($import, $e->getMessage());
 
             return new ImportResult(0, 0);
         }
@@ -47,6 +45,16 @@ final class ImportProcessor
         $import->update(['status' => $result->status()]);
 
         return $result;
+    }
+
+    /**
+     * Marks the whole import as failed, e.g. for an unreadable file. All-or-nothing:
+     * chunks saved before the error are removed and one file-level log explains why.
+     */
+    public function fail(Import $import, string $reason): void
+    {
+        $this->reset($import, ImportStatus::Failed);
+        $import->logs()->create(['error_message' => $reason]);
     }
 
     /**
