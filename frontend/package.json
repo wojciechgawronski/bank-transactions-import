@@ -13,7 +13,9 @@
     "lint": "run-s \"lint:*\"",
     "lint:oxlint": "oxlint . --fix",
     "lint:eslint": "eslint . --fix --cache",
-    "format": "prettier --write --experimental-cli src/"
+    "check:lint": "oxlint . && eslint .",
+    "format": "prettier --write --experimental-cli src/",
+    "check:format": "prettier --check --experimental-cli src/"
   },
   "dependencies": {
     "@vueuse/core": "^15.0.0",
