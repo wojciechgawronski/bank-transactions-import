@@ -6,6 +6,7 @@ use App\Domain\Import\Enums\ImportStatus;
 use Database\Factories\ImportFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
@@ -52,5 +53,13 @@ class Import extends Model
             'failed_records' => 'integer',
             'status' => ImportStatus::class,
         ];
+    }
+
+    /**
+     * @return HasMany<Transaction, $this>
+     */
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class);
     }
 }
