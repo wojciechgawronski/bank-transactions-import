@@ -186,6 +186,33 @@ docker compose exec frontend npm run type-check
 docker compose exec frontend npm run test:unit
 ```
 
+### CI lokalnie (act)
+
+Workflow z `.github/workflows/` można uruchomić bez pushu do GitHuba przez [act](https://github.com/nektos/act).
+`act` instaluje się na hoście (jeden plik binarny, joby uruchamia w Dockerze), np. do `~/.local/bin`:
+
+```sh
+curl -fsSL https://github.com/nektos/act/releases/latest/download/act_Linux_x86_64.tar.gz \
+  | tar -xz -C ~/.local/bin act
+```
+
+Obraz runnera ustawia `.actrc` w katalogu głównym repo. Komendy uruchamiaj z katalogu głównego:
+
+```sh
+act pull_request -W .github/workflows/backend.yml    # Pint, Larastan, testy
+act pull_request -W .github/workflows/frontend.yml   # lint, format, type-check, testy, build
+act pull_request                                     # oba workflow
+act -l                                               # lista jobów
+```
+
+### Bez Dockera, na lokalnej:
+```shell
+cd frontend && npm run check:lint && npm run check:format && npm run type-check && npm run test:unit -- --run && npm run build-only
+cd backend && vendor/bin/pint --test && vendor/bin/phpstan analyse --memory-limit=1G && php artisan test
+```
+
+* Pierwsze uruchomienie pobiera obraz runnera (`catthehacker/ubuntu:act-latest`) i trwa dłużej.
+
 **Produkcja** (`compose.prod.yaml`): obraz backendu bez dev-zależności (`composer install --no-dev --optimize-autoloader`,
 `config:cache`, `route:cache`) oraz obraz frontu budowany wieloetapowo (`npm ci && npm run build` → statyczne pliki).
 Serwer frontu podaje `dist/` i przekazuje `/api` do backendu, więc wszystko działa z jednej domeny, bez CORS.
