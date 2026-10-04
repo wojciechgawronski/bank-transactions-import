@@ -10,6 +10,9 @@ RUN apt-get update \
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+# Upload limit matches StoreImportRequest::MAX_SIZE_KB (10 MB) plus multipart overhead.
+RUN printf 'upload_max_filesize=10M\npost_max_size=12M\n' > /usr/local/etc/php/conf.d/uploads.ini
+
 RUN groupadd -g ${GID} app && useradd -u ${UID} -g app -m app
 
 WORKDIR /var/www/html
