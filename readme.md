@@ -184,6 +184,7 @@ docker compose logs -f queue                       # podgląd workera
 docker compose exec frontend npm run lint
 docker compose exec frontend npm run type-check
 docker compose exec frontend npm run test:unit
+docker compose exec app php artisan migrate:fresh --seed
 ```
 
 ### CI lokalnie (act)
