@@ -1,0 +1,44 @@
+name: frontend
+
+on:
+  push:
+    branches: [main]
+    paths: ['frontend/**', '.nvmrc', '.github/workflows/frontend.yml']
+  pull_request:
+    branches: [main]
+    paths: ['frontend/**', '.nvmrc', '.github/workflows/frontend.yml']
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # npm 10 bundled with Node 22 crashes on this dependency tree (edgesOut bug)
+      - run: npm install -g npm@11
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run check:lint
+
+      - name: Format
+        run: npm run check:format
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Unit tests
+        run: npm run test:unit -- --run
+
+      - name: Build
+        run: npm run build-only
