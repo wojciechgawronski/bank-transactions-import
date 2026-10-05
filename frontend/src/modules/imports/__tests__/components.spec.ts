@@ -3,8 +3,10 @@ import { mount } from '@vue/test-utils'
 import { MAX_FILE_SIZE_BYTES } from '@/api/imports'
 import FileDropzone from '../components/FileDropzone.vue'
 import ImportsTable from '../components/ImportsTable.vue'
+import StatCards from '../components/StatCards.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import { makeImport } from './fixtures'
+import { createTestRouter } from './router'
 
 function selectFile(wrapper: ReturnType<typeof mount>, file: File): Promise<void> {
   const input = wrapper.get<HTMLInputElement>('[data-testid="file-input"]')
@@ -79,6 +81,7 @@ describe('ImportsTable', () => {
       props: {
         imports: [makeImport(), makeImport({ id: 2, file_name: 'bank.xml', status: 'success' })],
       },
+      global: { plugins: [createTestRouter()] },
     })
 
     const rows = wrapper.findAll('[data-testid="import-row"]')
@@ -90,7 +93,31 @@ describe('ImportsTable', () => {
     expect(rows[1]?.text()).toContain('Sukces')
   })
 
+  it('links each file name to its error logs', () => {
+    const wrapper = mount(ImportsTable, {
+      props: { imports: [makeImport({ id: 7 })] },
+      global: { plugins: [createTestRouter()] },
+    })
+
+    expect(wrapper.get('a').attributes('href')).toBe('/imports/7')
+  })
+
   it('shows an empty state', () => {
-    expect(mount(ImportsTable, { props: { imports: [] } }).text()).toContain('Brak importów')
+    const wrapper = mount(ImportsTable, {
+      props: { imports: [] },
+      global: { plugins: [createTestRouter()] },
+    })
+
+    expect(wrapper.text()).toContain('Brak importów')
+  })
+})
+
+describe('StatCards', () => {
+  it('shows total, successful and failed record counts', () => {
+    const wrapper = mount(StatCards, {
+      props: { item: makeImport({ total_records: 10, successful_records: 7, failed_records: 3 }) },
+    })
+
+    expect(wrapper.findAll('dd').map((value) => value.text())).toEqual(['10', '7', '3'])
   })
 })
