@@ -1,235 +1,178 @@
-# Gdynia Project
+# Import transakcji bankowych
 
-Wewnętrzne narzędzie do importu transakcji bankowych z plików **CSV, JSON i XML**,
-z historią importów i podglądem błędów walidacji.
+Aplikacja do importu transakcji bankowych z plików **CSV, JSON i XML**. Dodajesz plik, system sprawdza każdy rekord:
+poprawne zapisuje, błędne odkłada do logów z opisem problemu. Na liście widać historię importów, a po kliknięciu
+w import – które rekordy się nie udały i dlaczego.
 
-Monorepo: dwie niezależne aplikacje w jednym repozytorium.
+| Lista importów | Błędy wybranego importu |
+| -------------- | ----------------------- |
+| ![Lista importów](docs/screenshots/imports-list.png) | ![Logi błędów importu](docs/screenshots/import-logs.png) |
 
-| Katalog     | Aplikacja                                         |
-| ----------- | ------------------------------------------------- |
-| `backend/`  | Laravel 12 (PHP 8.4), REST API + worker kolejki   |
-| `frontend/` | Vue 3 + TypeScript + Vite (SPA)                   |
-
-Development i produkcja działają w Dockerze.
-
----
-
-## Założenia
-
-- **Bez kont i logowania.** To narzędzie wewnętrzne, dostęp chroni sieć lub reverse proxy, nie aplikacja.
-- **Kwoty w groszach.** `amount` to liczba całkowita w jednostkach podrzędnych waluty (`150000` = 1 500,00 PLN).
-  W bazie siedzi `unsignedBigInteger`, nigdy `float`. Formatowanie do postaci „1 500,00” odbywa się dopiero we froncie.
-- **Waluta z listy ISO 4217.** Brief wymaga „trzech liter”; dodatkowo sprawdzamy, czy taki kod istnieje
-  (`symfony/intl`, `Currencies::exists()`), więc PLN i USD przechodzą, a wymyślone `ABC` już nie.
-- **IBAN z sumą kontrolną mod-97.** Brief wymaga „IBAN”, więc sprawdzamy format i cyfry kontrolne, tak jak bank.
-  Przykładowe numery z briefu (`PL1234…`, `PL9876…`) to placeholdery bez poprawnej sumy kontrolnej, dlatego
-  trafiają do `import_logs` z błędem IBAN. Pliki w `backend/tests/fixtures/valid.*` mają prawdziwe, poprawne numery.
-- **Import częściowy.** Poprawne rekordy trafiają do `transactions`, błędne do `import_logs`.
-  Status importu to `success`, `partial` albo `failed`.
-- **Asynchronicznie.** Upload odpowiada od razu (`202`), a plik przetwarza worker kolejki.
-  Dlatego poza statusami z briefu import ma też `pending` i `processing`, zanim zostanie przetworzony.
-
-## Stos
-
-| Warstwa      | Wybór                                                                 |
-| ------------ | --------------------------------------------------------------------- |
-| Backend      | Laravel 12, PHP 8.4                                                   |
-| Baza         | PostgreSQL 17 (Docker), SQLite `:memory:` w testach                   |
-| Kolejka      | driver `database`, osobny kontener `queue`                            |
-| Parsowanie   | `league/csv`, wbudowany `XMLReader`, `json_decode`                    |
-| Walidacja    | własne reguły `Iban` (mod-97) i `Currency` (`symfony/intl`)           |
-| Jakość PHP   | Pint, Larastan (PHPStan), PHPUnit                                     |
-| Frontend     | Vue 3.5, TypeScript, Vite, vue-router, Pinia                          |
-| UI           | Tailwind 4, `reka-ui`, `lucide-vue-next`, `vue-sonner`, `@vueuse/core` |
-| HTTP         | `axios` w jednym module `src/api/`                                    |
-| Testy frontu | Vitest + Vue Test Utils                                               |
-
-## Architektura backendu
-
-```
-POST /api/imports
-  └─ ImportController ── zapis pliku + rekord imports (pending) ── 202
-       └─ dispatch ProcessImport (kolejka)
-            └─ ImportProcessor
-                 ├─ ParserRegistry ─► TransactionParser (Csv / Json / Xml)   ← strategia
-                 ├─ RecordValidator (Iban, Currency, amount > 0)
-                 └─ paczki po 500 w DB::transaction:
-                      transactions + import_logs + liczniki w imports
-```
-
-| Wzorzec              | Gdzie                                                            |
-| -------------------- | ---------------------------------------------------------------- |
-| Strategia            | `TransactionParser` + `CsvParser`, `JsonParser`, `XmlParser`     |
-| Rejestr + DI         | `ParserRegistry` dostaje otagowane parsery (`giveTagged`)        |
-| Abstrakcja walidacji | `RecordValidator` (interfejs) + `LaravelRecordValidator`         |
-| DTO                  | `TransactionRecord`, `ImportResult` (readonly)                   |
-| Enum z logiką        | `ImportStatus::fromCounts()`, `FileFormat::fromExtension()`      |
-| Serwis aplikacyjny   | `ImportProcessor`, niezależny od HTTP i kolejki                  |
-| Job                  | `ProcessImport`, cienka powłoka nad procesorem                   |
-
-Nowy format pliku to jedna nowa klasa parsera i jedna linia w `ImportServiceProvider`.
-
-## Model danych
-
-| Tabela        | Kolumny                                                                                                   |
-| ------------- | --------------------------------------------------------------------------------------------------------- |
-| `imports`     | `id`, `file_name`, `total_records`, `successful_records`, `failed_records`, `status`, timestamps          |
-| `transactions`| `id`, `import_id`¹, `transaction_id` (unique), `account_number`, `transaction_date`, `amount` (grosze), `currency`, timestamps |
-| `import_logs` | `id`, `import_id`, `transaction_id` (nullable), `error_message`, timestamps                               |
-
-¹ Poza briefem. Mówi, z którego pliku pochodzi transakcja.
-
-Status importu:
-
-| Warunek                                       | Status    |
-| --------------------------------------------- | --------- |
-| `failed_records = 0` i `total_records > 0`    | `success` |
-| `successful_records = 0` (też pusty plik)     | `failed`  |
-| pozostałe                                     | `partial` |
-
-Przed i w trakcie przetwarzania import ma status `pending`, a potem `processing`.
-
-## Walidacja rekordu
-
-| Pole               | Reguła                                                         |
-| ------------------ | -------------------------------------------------------------- |
-| `transaction_id`   | wymagane, unikalne w pliku i w bazie                           |
-| `account_number`   | wymagane, poprawny IBAN (format + suma kontrolna mod-97)       |
-| `transaction_date` | wymagane, data `Y-m-d`                                         |
-| `amount`           | wymagane, liczba całkowita > 0 (grosze)                        |
-| `currency`         | wymagane, kod ISO 4217                                         |
-
-Błąd rekordu nie przerywa importu, tylko trafia do `import_logs`.
-
-## API
-
-| Metoda | Ścieżka                            | Opis                                  |
-| ------ | ---------------------------------- | ------------------------------------- |
-| POST   | `/api/imports`                     | upload pliku (`multipart`, pole `file`) → `202` |
-| GET    | `/api/imports`                     | lista importów, paginowana            |
-| GET    | `/api/imports/{import}`            | szczegóły importu + logi błędów (jak w briefie); służy też do pollingu statusu |
-| GET    | `/api/imports/{import}/logs`       | logi błędów z paginacją (poza briefem, dla dużych importów) |
-
-## Struktura repozytorium
-
-```
-gdynia-project/
-├── .github/workflows/      backend.yml, frontend.yml (filtr paths)
-├── compose.yaml            development
-├── compose.prod.yaml       produkcja
-├── .editorconfig  .gitignore  .nvmrc  README.md
-├── backend/
-│   ├── app/
-│   │   ├── Domain/Import/  Contracts, Parsers, Data, Enums, ParserRegistry, ImportProcessor
-│   │   ├── Http/           Controllers, Requests, Resources
-│   │   ├── Jobs/           ProcessImport
-│   │   ├── Models/         Import, Transaction, ImportLog
-│   │   ├── Providers/      ImportServiceProvider
-│   │   └── Rules/          Iban, Currency
-│   ├── tests/              Unit, Feature, fixtures/
-│   └── Dockerfile
-└── frontend/
-    ├── src/                api/, modules/imports/, layouts/, components/ui/, router/
-    └── Dockerfile
-```
+**Stos:** Laravel 12 (PHP 8.4) + PostgreSQL 17 + kolejka Laravela po stronie backendu, Vue 3 + TypeScript + Vite + Tailwind
+na froncie. Całość uruchamia Docker Compose.
 
 ---
 
-## Uruchomienie (Docker)
+## Szybki start
 
-Wymagane: Docker z Compose v2.
+Potrzebny jest tylko Docker z Compose v2.
 
 ```sh
 cp backend/.env.example backend/.env
 docker compose up -d --build
 docker compose exec app php artisan key:generate
-docker compose exec app php artisan migrate
-docker compose up -d;
-curl -F "file=@backend/tests/fixtures/valid.csv" http://localhost:8000/api/imports
+docker compose up -d --force-recreate app queue    # kontenery muszą wczytać nowy APP_KEY
+docker compose exec app php artisan migrate --seed  # --seed dodaje przykładowe importy
 ```
 
-### docker - postawienie srodowiska od nowa:
-```shell
-# Pełny reset, który usuwa też dane z bazy:
-docker compose down -v --rmi local --remove-orphans
-docker compose build --no-cache
-docker compose up -d --force-recreate -V
-docker compose exec app php artisan migrate
+Potem otwórz **http://localhost:5173** i wgraj któryś z przykładowych plików z `backend/tests/fixtures/`:
 
-- down -v: usuwa kontenery, sieć i wolumeny, czyli bazę i node_modules frontu.
-- --rmi local: usuwa obrazy zbudowane z Twoich Dockerfile (app, frontend).
-- --remove-orphans: usuwa kontenery usług, których nie ma już w compose.yaml (np. usuniętych z pliku).
-- build --no-cache: buduje od zera, bez warstw z cache.
-- up -d --force-recreate -V: tworzy kontenery od nowa i odtwarza anonimowe wolumeny.
+| Plik                           | Co zobaczysz                                                        |
+| ------------------------------ | ------------------------------------------------------------------- |
+| `valid.csv` / `.json` / `.xml` | status **Sukces** – 3 poprawne transakcje                           |
+| `mixed.csv` / `.json` / `.xml` | status **Częściowy** – 2 poprawne, 4 błędne (zły IBAN, kwota 0, brak konta, waluta `EURO`) |
+| `corrupted.*`                  | status **Błąd** – plik jest uszkodzony, nic nie zostaje zapisane    |
+| `brief-example.csv`            | dane z treści zadania – oba rekordy odrzucone, patrz [decyzje](#decyzje-względem-briefu) |
 
-# tylko przebudować po zmianach i zachować dane w bazie:
-docker compose up -d --build --force-recreate -V
-```
+Ten sam `transaction_id` można zaimportować tylko raz, więc drugi upload tego samego pliku skończy się błędami
+„already been imported”. Czysty stan bazy: `docker compose exec app php artisan migrate:fresh --seed`.
 
-| Usługa     | Rola                                   | Adres                   |
-| ---------- | -------------------------------------- | ----------------------- |
-| `app`      | Laravel API                            | http://localhost:8000   |
-| `queue`    | `php artisan queue:work`               | –                       |
-| `db`       | PostgreSQL                             | localhost:5433¹         |
-| `adminer`  | podgląd bazy (system: PostgreSQL, serwer: `db`) | http://localhost:8080 |
-| `frontend` | Vite dev server, proxy `/api` → `app`  | http://localhost:5173   |
-
-¹ Port na hoście ustawia `DB_FORWARD_PORT` (domyślnie 5433, żeby nie kolidować z lokalnym PostgreSQL). Kontenery łączą się przez `db:5432`.
-
-`app` i `queue` współdzielą `storage/app/private` (oba montują `./backend`), żeby worker widział wgrany plik.
-
-Codzienne komendy:
+Upload działa też bez frontu:
 
 ```sh
-docker compose exec app php artisan test           # testy backendu
-docker compose exec app vendor/bin/pint            # styl
-docker compose exec app vendor/bin/phpstan analyse --memory-limit=1G # Larastan
-docker compose logs -f queue                       # podgląd workera
-docker compose exec frontend npm run lint
-docker compose exec frontend npm run type-check
-docker compose exec frontend npm run test:unit
-docker compose exec app php artisan migrate:fresh --seed
+curl -F "file=@backend/tests/fixtures/mixed.csv" http://localhost:8000/api/imports
 ```
 
-### CI lokalnie (act)
+## Jak to działa
 
-Workflow z `.github/workflows/` można uruchomić bez pushu do GitHuba przez [act](https://github.com/nektos/act).
-`act` instaluje się na hoście (jeden plik binarny, joby uruchamia w Dockerze), np. do `~/.local/bin`:
+1. **Upload.** API sprawdza tylko sam plik (rozszerzenie `csv/json/xml`, maks. 10 MB), zapisuje go, tworzy import
+   ze statusem *Oczekuje* i od razu odpowiada `202`. Nie czekasz na przetworzenie dużego pliku.
+2. **Przetwarzanie w tle.** Worker kolejki czyta plik rekord po rekordzie i waliduje każdy z nich.
+   Poprawne rekordy trafiają do `transactions`, błędne do `import_logs` – zapis idzie paczkami po 500.
+3. **Wynik.** Import dostaje status zależny od wyniku. Front sam odświeża listę co 2,5 s, dopóki coś się przetwarza.
 
-```sh
-curl -fsSL https://github.com/nektos/act/releases/latest/download/act_Linux_x86_64.tar.gz \
-  | tar -xz -C ~/.local/bin act
-```
+| Status                   | Kiedy                                                       |
+| ------------------------ | ----------------------------------------------------------- |
+| Oczekuje / Przetwarzanie | plik czeka w kolejce albo właśnie jest czytany              |
+| **Sukces**               | wszystkie rekordy poprawne                                  |
+| **Częściowy**            | część rekordów poprawna, część trafiła do logów             |
+| **Błąd**                 | żaden rekord nie przeszedł, plik był pusty albo uszkodzony  |
 
-Obraz runnera ustawia `.actrc` w katalogu głównym repo. Komendy uruchamiaj z katalogu głównego:
+### Walidacja rekordu
 
-```sh
-act pull_request -W .github/workflows/backend.yml    # Pint, Larastan, testy
-act pull_request -W .github/workflows/frontend.yml   # lint, format, type-check, testy, build
-act pull_request                                     # oba workflow
-act -l                                               # lista jobów
-```
+| Pole               | Reguła                                                     |
+| ------------------ | ---------------------------------------------------------- |
+| `transaction_id`   | wymagane, nie może się powtórzyć ani w pliku, ani w bazie  |
+| `account_number`   | wymagane, poprawny IBAN (format + suma kontrolna mod-97)   |
+| `transaction_date` | wymagane, data w formacie `RRRR-MM-DD`                     |
+| `amount`           | wymagane, liczba całkowita większa od 0 (w groszach)       |
+| `currency`         | wymagane, istniejący kod waluty ISO 4217, np. `PLN`, `USD` |
 
-### Bez Dockera, na lokalnej:
-```shell
-cd frontend && npm run check:lint && npm run check:format && npm run type-check && npm run test:unit -- --run && npm run build-only
-cd backend && vendor/bin/pint --test && vendor/bin/phpstan analyse --memory-limit=1G && php artisan test
-```
+Każdy błąd w logach ma numer rekordu w pliku, np. *„Record 4: The account number field is required.”* –
+dzięki temu łatwo znaleźć wiersz, nawet gdy brakuje mu `transaction_id`.
 
-* Pierwsze uruchomienie pobiera obraz runnera (`catthehacker/ubuntu:act-latest`) i trwa dłużej.
+### Decyzje względem briefu
 
-**Produkcja** (`compose.prod.yaml`): obraz backendu bez dev-zależności (`composer install --no-dev --optimize-autoloader`,
-`config:cache`, `route:cache`) oraz obraz frontu budowany wieloetapowo (`npm ci && npm run build` → statyczne pliki).
-Serwer frontu podaje `dist/` i przekazuje `/api` do backendu, więc wszystko działa z jednej domeny, bez CORS.
+- **IBAN z sumą kontrolną.** Brief wymaga „IBAN”, więc sprawdzamy go tak jak bank. Przykładowe numery z treści zadania
+  (`PL1234…`, `PL9876…`) to placeholdery bez poprawnej sumy kontrolnej, dlatego są odrzucane – celowo.
+  Pliki `valid.*` mają prawdziwe, poprawne numery.
+- **Waluta** – brief mówi „trzy litery”; dodatkowo sprawdzamy, czy taki kod istnieje, więc `ABC` nie przejdzie.
+- **Kwoty w groszach** (`150000` = 1 500,00 PLN), w bazie zawsze liczba całkowita, nigdy `float`.
+- **Dodatkowe statusy** `pending` i `processing`, bo plik jest przetwarzany asynchronicznie.
+- **Uszkodzony plik to wszystko albo nic** – jeśli plik psuje się w połowie, zapisane wcześniej rekordy są wycofywane,
+  a w logach zostaje jeden wpis z opisem błędu pliku.
+- **Bez logowania** – to narzędzie wewnętrzne, dostęp chroni sieć albo reverse proxy.
+
+## API
+
+| Metoda | Ścieżka                  | Opis                                                         |
+| ------ | ------------------------ | ------------------------------------------------------------ |
+| POST   | `/api/imports`           | upload pliku (`multipart/form-data`, pole `file`) → `202`   |
+| GET    | `/api/imports`           | lista importów, od najnowszych, `?page=` i `?per_page=`     |
+| GET    | `/api/imports/{id}`      | szczegóły importu razem z logami błędów (jak w briefie)      |
+| GET    | `/api/imports/{id}/logs` | logi błędów z paginacją – dla dużych importów (poza briefem) |
+
+Błędy zawsze wracają jako JSON, np. `422` z listą błędów walidacji przy złym pliku.
 
 ---
 
+## Dla programistów
 
-## Konwencje
+### Usługi
+
+| Usługa     | Do czego                                    | Adres                 |
+| ---------- | ------------------------------------------- | --------------------- |
+| `frontend` | Vite dev server, przekazuje `/api` do `app` | http://localhost:5173 |
+| `app`      | Laravel API                                 | http://localhost:8000 |
+| `queue`    | worker kolejki (`queue:work`)               | –                     |
+| `db`       | PostgreSQL                                  | localhost:5433¹       |
+| `adminer`  | podgląd bazy (system: PostgreSQL, serwer: `db`, login `gdynia` / `secret`) | http://localhost:8080 |
+
+¹ Port na hoście ustawia `DB_FORWARD_PORT` (domyślnie 5433, żeby nie kolidował z lokalnym PostgreSQL).
+
+### Codzienne komendy
+
+```sh
+docker compose exec app php artisan test                              # testy backendu (SQLite w pamięci)
+docker compose exec app vendor/bin/pint                               # styl PHP
+docker compose exec app vendor/bin/phpstan analyse --memory-limit=1G  # Larastan
+docker compose exec frontend npm run test:unit -- --run               # testy frontu
+docker compose exec frontend npm run lint                             # lint frontu (z poprawkami)
+docker compose exec frontend npm run type-check
+docker compose logs -f queue                                          # podgląd workera
+docker compose restart queue                                          # po zmianie kodu jobów
+```
+
+Testy nigdy nie dotykają bazy deweloperskiej – `phpunit.xml` wymusza SQLite `:memory:` i kolejkę `sync`.
+
+Środowisko od nowa (**usuwa dane z bazy**):
+
+```sh
+docker compose down -v --rmi local --remove-orphans
+docker compose up -d --build
+docker compose exec app php artisan migrate --seed
+```
+
+### CI
+
+GitHub Actions (`.github/workflows/`) uruchamia osobno backend (Pint, Larastan, testy) i frontend (lint, format,
+type-check, testy, build) – tylko gdy zmieniły się pliki danej części. Lokalnie, bez pushu, przez
+[act](https://github.com/nektos/act):
+
+```sh
+act pull_request -W .github/workflows/backend.yml
+act pull_request -W .github/workflows/frontend.yml
+```
+
+### Architektura
+
+```
+POST /api/imports
+  └─ ImportController ── zapis pliku + import (pending) ── 202
+       └─ ProcessImport (job w kolejce)
+            └─ ImportProcessor
+                 ├─ ParserRegistry ─► CsvParser / JsonParser / XmlParser   ← strategia
+                 ├─ RecordValidator (reguły Iban, Currency, amount > 0)
+                 └─ paczki po 500 w transakcji DB: transactions + import_logs + liczniki
+```
+
+- Logika importu żyje w `backend/app/Domain/Import` i nie zależy od HTTP ani kolejki – kontrolery i job tylko ją wywołują.
+- **Nowy format pliku** to jedna klasa parsera i jedna linia w `ImportServiceProvider`.
+- Parsery czytają pliki strumieniowo (XML przez `XMLReader`, CSV przez `league/csv`), więc duży plik nie ląduje w pamięci.
+- Front: `src/api/` (axios), `src/modules/imports/` (store Pinia, polling, komponenty, drawer z logami pod `/imports/:id`),
+  `src/components/ui/` (komponenty ogólne).
+
+```
+├── .github/workflows/   CI backendu i frontu
+├── compose.yaml         środowisko deweloperskie
+├── backend/             Laravel: app/Domain/Import, Http, Jobs, Models, Rules; tests/ + fixtures/
+├── frontend/            Vue: src/api, src/modules/imports, src/layouts, src/components/ui
+└── docs/screenshots/    zrzuty ekranu do tego pliku
+```
+
+### Konwencje
 
 - Commity: [Conventional Commits](https://www.conventionalcommits.org/) ze scope `backend`, `frontend`, `docker`, `ci`,
-  np. `feat(backend): add xml parser`.
-- Gałąź główna: `main`. CI uruchamia się na push i PR do `main`, osobno dla `backend/**` i `frontend/**`.
-- Kontrolery tylko delegują, a logika żyje w `app/Domain/Import`.
+  np. `feat(backend): add xml parser`. Każda zmiana na osobnym branchu, merge do `main`.
 - Pieniądze zawsze jako liczba całkowita groszy.
-- Każda lista w API jest paginowana i ma jawne `orderBy`.
+- Każda lista w API jest paginowana i ma jawne sortowanie.
