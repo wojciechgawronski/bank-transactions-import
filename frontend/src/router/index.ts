@@ -8,6 +8,14 @@ const router = createRouter({
       path: '/imports',
       name: 'imports',
       component: () => import('@/modules/imports/views/ImportsView.vue'),
+      children: [
+        {
+          path: ':id(\\d+)',
+          name: 'import-details',
+          component: () => import('@/modules/imports/components/ImportLogsDrawer.vue'),
+          props: true,
+        },
+      ],
     },
   ],
 })

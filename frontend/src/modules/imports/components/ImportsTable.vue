@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { RouterLink } from 'vue-router'
 import { Inbox } from 'lucide-vue-next'
 import type { Import } from '@/api/imports'
 import { formatDateTime } from '@/lib/format'
@@ -24,11 +25,13 @@ defineProps<{ imports: Import[]; loading?: boolean }>()
       </thead>
       <tbody class="divide-y divide-slate-100" :class="loading && 'opacity-50'">
         <tr v-for="item in imports" :key="item.id" data-testid="import-row">
-          <td
-            class="max-w-xs truncate px-4 py-3 font-medium text-slate-800"
-            :title="item.file_name"
-          >
-            {{ item.file_name }}
+          <td class="max-w-xs truncate px-4 py-3 font-medium" :title="item.file_name">
+            <RouterLink
+              :to="{ name: 'import-details', params: { id: item.id } }"
+              class="text-sky-700 hover:underline"
+            >
+              {{ item.file_name }}
+            </RouterLink>
           </td>
           <td class="px-4 py-3 text-right tabular-nums">{{ item.total_records }}</td>
           <td class="px-4 py-3 text-right tabular-nums text-emerald-700">
