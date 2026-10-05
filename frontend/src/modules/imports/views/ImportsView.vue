@@ -6,11 +6,13 @@ import { toast } from 'vue-sonner'
 import { apiErrorMessage } from '@/api/http'
 import FileDropzone from '../components/FileDropzone.vue'
 import ImportsTable from '../components/ImportsTable.vue'
+import { useImportPolling } from '../composables/useImportPolling'
 import { useImportsStore } from '../stores/imports'
 
 const store = useImportsStore()
 const { imports, loading, uploading, error } = storeToRefs(store)
 
+useImportPolling()
 onMounted(() => store.fetchImports())
 
 async function onSelect(file: File): Promise<void> {

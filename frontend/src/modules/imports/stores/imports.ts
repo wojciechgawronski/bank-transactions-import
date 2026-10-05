@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { apiErrorMessage } from '@/api/http'
 import {
+  isFinished,
   listImports,
   uploadImport,
   type Import,
@@ -16,6 +17,8 @@ export const useImportsStore = defineStore('imports', () => {
   const loading = ref(false)
   const uploading = ref(false)
   const error = ref<string | null>(null)
+
+  const hasUnfinished = computed(() => imports.value.some((item) => !isFinished(item.status)))
 
   function apply(result: Paginated<Import>): void {
     imports.value = result.data
@@ -35,17 +38,39 @@ export const useImportsStore = defineStore('imports', () => {
     }
   }
 
+  /** Background refresh for polling: no spinner, a failed request just waits for the next tick. */
+  async function refresh(): Promise<void> {
+    try {
+      apply(await listImports(page.value))
+      error.value = null
+    } catch {
+      // keep the current list; polling will try again
+    }
+  }
+
   /** Uploads a file and shows the first page, where the new import appears. Throws on API errors. */
   async function upload(file: File): Promise<Import> {
     uploading.value = true
     try {
       const created = await uploadImport(file)
-      await fetchImports(1)
+      page.value = 1
+      await refresh()
       return created
     } finally {
       uploading.value = false
     }
   }
 
-  return { imports, meta, page, loading, uploading, error, fetchImports, upload }
+  return {
+    imports,
+    meta,
+    page,
+    loading,
+    uploading,
+    error,
+    hasUnfinished,
+    fetchImports,
+    refresh,
+    upload,
+  }
 })
