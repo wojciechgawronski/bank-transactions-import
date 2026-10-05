@@ -4,13 +4,14 @@ import { storeToRefs } from 'pinia'
 import { RefreshCw } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { apiErrorMessage } from '@/api/http'
+import PaginationControls from '@/components/ui/PaginationControls.vue'
 import FileDropzone from '../components/FileDropzone.vue'
 import ImportsTable from '../components/ImportsTable.vue'
 import { useImportPolling } from '../composables/useImportPolling'
 import { useImportsStore } from '../stores/imports'
 
 const store = useImportsStore()
-const { imports, loading, uploading, error } = storeToRefs(store)
+const { imports, meta, loading, uploading, error } = storeToRefs(store)
 
 useImportPolling()
 onMounted(() => store.fetchImports())
@@ -50,6 +51,14 @@ async function onSelect(file: File): Promise<void> {
       </p>
 
       <ImportsTable :imports="imports" :loading="loading" />
+
+      <PaginationControls
+        v-if="meta"
+        :page="meta.current_page"
+        :last-page="meta.last_page"
+        :total="meta.total"
+        @change="store.fetchImports"
+      />
     </section>
   </div>
 </template>
