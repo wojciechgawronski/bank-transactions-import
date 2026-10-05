@@ -1,5 +1,3 @@
 <template>
-  <main class="p-8">
-    <h1 class="text-2xl font-semibold">Import transakcji</h1>
-  </main>
+  <h1 class="text-lg font-semibold text-slate-800">Importy</h1>
 </template>
