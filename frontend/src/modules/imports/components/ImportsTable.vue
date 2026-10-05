@@ -43,7 +43,7 @@ defineProps<{ imports: Import[]; loading?: boolean }>()
         <tr v-if="!loading && imports.length === 0">
           <td colspan="6" class="px-4 py-12 text-center text-slate-500">
             <Inbox class="mx-auto mb-2 size-8 text-slate-300" aria-hidden="true" />
-            Brak importów.
+            Brak importów. Wgraj pierwszy plik powyżej.
           </td>
         </tr>
       </tbody>

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 import { FileSpreadsheet } from 'lucide-vue-next'
+import { Toaster } from 'vue-sonner'
+import 'vue-sonner/style.css'
 </script>
 
 <template>
@@ -17,5 +19,7 @@ import { FileSpreadsheet } from 'lucide-vue-next'
     <main class="mx-auto max-w-6xl px-6 py-8">
       <slot />
     </main>
+
+    <Toaster position="top-right" rich-colors close-button />
   </div>
 </template>

@@ -1,13 +1,20 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { apiErrorMessage } from '@/api/http'
-import { listImports, type Import, type Paginated, type PaginationMeta } from '@/api/imports'
+import {
+  listImports,
+  uploadImport,
+  type Import,
+  type Paginated,
+  type PaginationMeta,
+} from '@/api/imports'
 
 export const useImportsStore = defineStore('imports', () => {
   const imports = ref<Import[]>([])
   const meta = ref<PaginationMeta | null>(null)
   const page = ref(1)
   const loading = ref(false)
+  const uploading = ref(false)
   const error = ref<string | null>(null)
 
   function apply(result: Paginated<Import>): void {
@@ -28,5 +35,17 @@ export const useImportsStore = defineStore('imports', () => {
     }
   }
 
-  return { imports, meta, page, loading, error, fetchImports }
+  /** Uploads a file and shows the first page, where the new import appears. Throws on API errors. */
+  async function upload(file: File): Promise<Import> {
+    uploading.value = true
+    try {
+      const created = await uploadImport(file)
+      await fetchImports(1)
+      return created
+    } finally {
+      uploading.value = false
+    }
+  }
+
+  return { imports, meta, page, loading, uploading, error, fetchImports, upload }
 })
