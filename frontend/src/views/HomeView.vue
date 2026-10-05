@@ -1,9 +1,5 @@
-<script setup lang="ts">
-import TheWelcome from '../components/TheWelcome.vue'
-</script>
-
 <template>
-  <main>
-    <TheWelcome />
+  <main class="p-8">
+    <h1 class="text-2xl font-semibold">Import transakcji</h1>
   </main>
 </template>
