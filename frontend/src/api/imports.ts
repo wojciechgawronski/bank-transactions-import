@@ -9,6 +9,8 @@ export interface Import {
   successful_records: number
   failed_records: number
   status: ImportStatus
+  /** Laravel queue connection the import was processed on, e.g. database, rabbitmq. */
+  queue_connection: string | null
   created_at: string
   updated_at: string
 }

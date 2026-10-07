@@ -8,6 +8,7 @@ export function makeImport(overrides: Partial<Import> = {}): Import {
     successful_records: 8,
     failed_records: 2,
     status: 'partial',
+    queue_connection: 'database',
     created_at: '2025-10-14T08:30:00.000000Z',
     updated_at: '2025-10-14T08:30:05.000000Z',
     ...overrides,

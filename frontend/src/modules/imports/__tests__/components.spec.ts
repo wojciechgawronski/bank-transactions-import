@@ -93,6 +93,25 @@ describe('ImportsTable', () => {
     expect(rows[1]?.text()).toContain('Sukces')
   })
 
+  it('shows the queue each import was processed on', () => {
+    const wrapper = mount(ImportsTable, {
+      props: {
+        imports: [
+          makeImport(),
+          makeImport({ id: 2, queue_connection: 'rabbitmq' }),
+          makeImport({ id: 3, queue_connection: 'beanstalkd' }),
+          makeImport({ id: 4, queue_connection: null }),
+        ],
+      },
+      global: { plugins: [createTestRouter()] },
+    })
+
+    const queues = wrapper
+      .findAll('[data-testid="import-row"]')
+      .map((row) => row.findAll('td')[5]?.text())
+    expect(queues).toEqual(['Baza danych', 'RabbitMQ', 'beanstalkd', '—'])
+  })
+
   it('links each file name to its error logs', () => {
     const wrapper = mount(ImportsTable, {
       props: { imports: [makeImport({ id: 7 })] },
