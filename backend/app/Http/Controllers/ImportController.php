@@ -33,8 +33,14 @@ class ImportController extends Controller
             throw new RuntimeException('Could not store the uploaded file.');
         }
 
-        $import = Import::create(['file_name' => $file->getClientOriginalName()]);
-        ProcessImport::dispatch($import, $path, $request->fileFormat());
+        // Recorded and used explicitly, so the stored value always matches where the job went.
+        $connection = config()->string('queue.default');
+
+        $import = Import::create([
+            'file_name' => $file->getClientOriginalName(),
+            'queue_connection' => $connection,
+        ]);
+        ProcessImport::dispatch($import, $path, $request->fileFormat())->onConnection($connection);
 
         return ImportResource::make($import->refresh())
             ->response()

@@ -21,6 +21,7 @@ class ImportFactory extends Factory
         return [
             'file_name' => fake()->slug(2).'.'.fake()->randomElement(['csv', 'json', 'xml']),
             'status' => ImportStatus::Pending,
+            'queue_connection' => 'database',
         ];
     }
 

@@ -44,6 +44,19 @@ class ImportApiTest extends TestCase
         });
     }
 
+    public function test_upload_records_queue_connection_and_dispatches_on_it(): void
+    {
+        Queue::fake();
+        config(['queue.default' => 'rabbitmq']);
+
+        $this->postJson('/api/imports', ['file' => $this->fixtureUpload('valid.csv')])
+            ->assertAccepted()
+            ->assertJsonPath('data.queue_connection', 'rabbitmq');
+
+        $this->assertSame('rabbitmq', Import::query()->sole()->queue_connection);
+        Queue::assertPushed(ProcessImport::class, fn (ProcessImport $job) => $job->connection === 'rabbitmq');
+    }
+
     public function test_uploaded_file_is_processed_and_removed(): void
     {
         // phpunit.xml uses the sync queue, so the job runs during the request.

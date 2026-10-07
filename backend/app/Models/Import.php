@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $successful_records
  * @property int $failed_records
  * @property ImportStatus $status
+ * @property string|null $queue_connection
  */
 class Import extends Model
 {
@@ -30,6 +31,7 @@ class Import extends Model
         'successful_records',
         'failed_records',
         'status',
+        'queue_connection',
     ];
 
     /**
