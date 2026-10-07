@@ -2,11 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Bank transaction import app: upload CSV/JSON/XML, records are validated in a queue job, valid ones go to `transactions`, invalid ones to `import_logs`. Monorepo: `backend/` (Laravel 12, PHP 8.4, PostgreSQL 17, database queue) and `frontend/` (Vue 3 + TS + Vite + Pinia + Tailwind). Everything runs via Docker Compose (`compose.yaml`). User-facing docs (in Polish) are in `readme.md`.
+Bank transaction import app: upload CSV/JSON/XML, records are validated in a queue job, valid ones go to `transactions`, invalid ones to `import_logs`. Monorepo: `backend/` (Laravel 12, PHP 8.4, PostgreSQL 17, queue in the database or optionally RabbitMQ via `QUEUE_CONNECTION`) and `frontend/` (Vue 3 + TS + Vite + Pinia + Tailwind). Everything runs via Docker Compose (`compose.yaml`). User-facing docs (in Polish) are in `readme.md`.
 
 ## Commands
 
-Dev environment: `docker compose up -d --build` — services `app` (:8000), `queue` (worker), `db` (host port 5433), `adminer` (:8080), `frontend` (:5173, proxies `/api` to `app`). First run also needs `cp backend/.env.example backend/.env`, `php artisan key:generate`, recreating `app`/`queue`, then `php artisan migrate --seed` (see `readme.md`).
+Dev environment: `docker compose up -d --build` — services `app` (:8000), `queue` (worker), `db` (host port 5433), `adminer` (:8080), `frontend` (:5173, proxies `/api` to `app`); `rabbitmq` (:15672) only with `--profile rabbitmq`. First run also needs `cp backend/.env.example backend/.env`, `php artisan key:generate`, recreating `app`/`queue`, then `php artisan migrate --seed` (see `readme.md`).
 
 Backend (run inside `docker compose exec app ...`, or directly in `backend/` if host PHP is available):
 

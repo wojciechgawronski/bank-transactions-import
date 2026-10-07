@@ -39,6 +39,19 @@ services:
       timeout: 5s
       retries: 10
 
+  # Optional queue backend: docker compose --profile rabbitmq up -d + QUEUE_CONNECTION=rabbitmq.
+  # No depends_on from app/queue (optional deps need Compose 2.20+); queue restarts until it connects.
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    profiles: [rabbitmq]
+    ports:
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   adminer:
     image: adminer
     ports:

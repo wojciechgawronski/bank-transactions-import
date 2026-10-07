@@ -107,8 +107,22 @@ Błędy zawsze wracają jako JSON, np. `422` z listą błędów walidacji przy z
 | `queue`    | worker kolejki (`queue:work`)               | –                     |
 | `db`       | PostgreSQL                                  | localhost:5433¹       |
 | `adminer`  | podgląd bazy (system: PostgreSQL, serwer: `db`, login `gdynia` / `secret`) | http://localhost:8080 |
+| `rabbitmq` | opcjonalna kolejka, tylko z profilem `rabbitmq` (panel: `guest` / `guest`) | http://localhost:15672 |
 
 ¹ Port na hoście ustawia `DB_FORWARD_PORT` (domyślnie 5433, żeby nie kolidował z lokalnym PostgreSQL).
+
+### Kolejka: baza albo RabbitMQ
+
+Domyślnie joby trzymane są w tabeli `jobs` w PostgreSQL (`QUEUE_CONNECTION=database`). Żeby użyć RabbitMQ:
+
+```sh
+# backend/.env: QUEUE_CONNECTION=rabbitmq
+docker compose --profile rabbitmq up -d
+docker compose up -d --force-recreate app queue   # wczytanie nowego .env
+```
+
+Kod się nie zmienia – job trafia do kolejki wskazanej w `.env`. Nieudane joby nadal lądują w tabeli `failed_jobs`.
+Zamiast `--profile` można ustawić `COMPOSE_PROFILES=rabbitmq` w `.env` w katalogu głównym.
 
 ### Codzienne komendy
 
