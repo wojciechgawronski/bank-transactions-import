@@ -5,7 +5,7 @@ ARG GID=1000
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git unzip libicu-dev libzip-dev libpq-dev \
-    && docker-php-ext-install intl zip pdo_pgsql \
+    && docker-php-ext-install intl zip pdo_pgsql sockets \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
