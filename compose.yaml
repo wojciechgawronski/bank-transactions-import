@@ -63,6 +63,18 @@ services:
       timeout: 5s
       retries: 10
 
+  # Web GUI for the redis profile; the port is configurable as 8081/8082 are often taken.
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    profiles: [redis]
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "${REDIS_GUI_PORT:-8083}:8081"
+    depends_on:
+      redis:
+        condition: service_healthy
+
   adminer:
     image: adminer
     ports:

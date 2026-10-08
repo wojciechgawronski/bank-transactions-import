@@ -6,7 +6,7 @@ Bank transaction import app: upload CSV/JSON/XML, records are validated in a que
 
 ## Commands
 
-Dev environment: `docker compose up -d --build` — services `app` (:8000), `queue` (worker), `db` (host port 5433), `adminer` (:8080), `frontend` (:5173, proxies `/api` to `app`); `rabbitmq` (:15672) only with `--profile rabbitmq`, `redis` (no host port) only with `--profile redis`. First run also needs `cp backend/.env.example backend/.env`, `php artisan key:generate`, recreating `app`/`queue`, then `php artisan migrate --seed` (see `readme.md`).
+Dev environment: `docker compose up -d --build` — services `app` (:8000), `queue` (worker), `db` (host port 5433), `adminer` (:8080), `frontend` (:5173, proxies `/api` to `app`); `rabbitmq` (:15672) only with `--profile rabbitmq`, `redis` (no host port) and its GUI `redis-commander` (:8083) only with `--profile redis`. First run also needs `cp backend/.env.example backend/.env`, `php artisan key:generate`, recreating `app`/`queue`, then `php artisan migrate --seed` (see `readme.md`).
 
 Backend (run inside `docker compose exec app ...`, or directly in `backend/` if host PHP is available):
 
