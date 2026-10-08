@@ -17,6 +17,18 @@ na froncie. Całość uruchamia Docker Compose.
 
 Potrzebny jest tylko Docker z Compose v2.
 
+#### na lokalu, bez dockera
+```shell
+cd backend && php artisan serve;
+cd backend && php artisan migrate:fresh;
+cd backend && php artisan queue:work --tries=3;
+cd frontend && nvm use 22.23.3 && npm run dev;
+# .env
+DB_CONNECTION=sqlite;
+QUEUE_CONNECTION=database;
+
+```
+
 ```sh
 cp backend/.env.example backend/.env
 docker compose up -d --build
