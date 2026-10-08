@@ -25,6 +25,7 @@ class ImportResource extends JsonResource
             'successful_records' => $this->successful_records,
             'failed_records' => $this->failed_records,
             'status' => $this->status,
+            'queue_connection' => $this->queue_connection,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'logs' => ImportLogResource::collection($this->whenLoaded('logs')),

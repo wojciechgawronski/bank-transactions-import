@@ -117,7 +117,7 @@ Domyślnie joby trzymane są w tabeli `jobs` w PostgreSQL (`QUEUE_CONNECTION=dat
 
 ```sh
 # backend/.env: QUEUE_CONNECTION=rabbitmq
-docker compose --profile rabbitmq up -d           # uruchomienie RabbitMQ (obok pozostałych usług)
+docker compose --profile rabbitmq up -d
 docker compose up -d --force-recreate app queue   # wczytanie nowego .env
 ```
 
