@@ -80,6 +80,7 @@ return [
             'after_commit' => false,
         ],
 
+        // Optional, needs the redis compose profile (see readme.md).
         'redis' => [
             'driver' => 'redis',
             'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
