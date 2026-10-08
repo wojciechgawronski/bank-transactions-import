@@ -109,8 +109,10 @@ Błędy zawsze wracają jako JSON, np. `422` z listą błędów walidacji przy z
 | `adminer`  | podgląd bazy (system: PostgreSQL, serwer: `db`, login `gdynia` / `secret`) | http://localhost:8080 |
 | `rabbitmq` | opcjonalna kolejka, tylko z profilem `rabbitmq` (panel: `guest` / `guest`) | http://localhost:15672 |
 | `redis`    | opcjonalna kolejka, tylko z profilem `redis` (podgląd: `docker compose exec redis redis-cli`) | – |
+| `redis-commander` | GUI dla Redisa, tylko z profilem `redis` (joby w kluczach `*queues:default*`)² | http://localhost:8083 |
 
 ¹ Port na hoście ustawia `DB_FORWARD_PORT` (domyślnie 5433, żeby nie kolidował z lokalnym PostgreSQL).
+² Port na hoście ustawia `REDIS_GUI_PORT` (domyślnie 8083).
 
 ### Kolejka: baza, RabbitMQ albo Redis
 
